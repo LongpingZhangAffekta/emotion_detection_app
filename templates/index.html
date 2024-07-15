@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emotion Detection</title>
+    <style>
+        video {
+            display: block;
+            margin: auto;
+        }
+        #emotion-label {
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .video-container {
+            display: flex;
+            justify-content: space-around;
+        }
+    </style>
+</head>
+<body>
+    <h1 style="text-align:center;">Emotion Detection</h1>
+    <div class="video-container">
+        <div>
+            <h2 style="text-align:center;">Real-time Camera</h2>
+            <video id="video" width="640" height="480" autoplay></video>
+        </div>
+        <div>
+            <h2 style="text-align:center;">Predicted Results</h2>
+            <img id="processed-video" width="640" height="480">
+        </div>
+    </div>
+    <!-- <h2 id="emotion-label"></h2> -->
+
+    <script>
+        const video = document.getElementById('video');
+        const processedVideo = document.getElementById('processed-video');
+        const emotionLabel = document.getElementById('emotion-label');
+
+        // Get access to the user's webcam
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                video.srcObject = stream;
+                // Start fetching the processed feed
+                fetchProcessedFeed();
+            })
+            .catch(err => {
+                console.error('Error accessing the webcam:', err);
+            });
+
+        function fetchProcessedFeed() {
+            processedVideo.src = "/processed_feed";
+            processedVideo.onload = () => {
+                setTimeout(fetchProcessedFeed, 1000); // Refresh processed feed every second
+            };
+        }
+
+        function captureFrame() {
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            canvas.toBlob(blob => {
+                const formData = new FormData();
+                formData.append('file', blob, 'frame.jpg');
+                
+                fetch('/predict', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    emotionLabel.textContent = `Predicted Emotion: ${data.prediction}`;
+                })
+                .catch(err => {
+                    console.error('Error:', err);
+                });
+            }, 'image/jpeg');
+        }
+
+        // Capture a frame every second
+        setInterval(captureFrame, 1000);
+    </script>
+</body>
+</html>
